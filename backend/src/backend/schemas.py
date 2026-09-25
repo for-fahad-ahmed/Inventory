@@ -1,0 +1,398 @@
+from datetime import date, datetime
+from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+
+from .enums import Role, PaymentStatus, PaymentMethod, PurchaseStatus, StockMovementType
+
+
+class UserBase(BaseModel):
+    username: str = Field(min_length=1, max_length=20)
+    email: EmailStr = Field(max_length=50)
+    name: str = Field(min_length=1, max_length=20)
+    phone: str = Field(
+        min_length=12,
+        max_length=12,
+        pattern=r"^\+92[0-9]{10}$",
+    )
+    role: Role
+    status: bool = True
+
+
+class UserCreate(UserBase):
+    password: str = Field(min_length=8, max_length=255)
+
+
+class UserResponse(UserBase):
+    id: int
+    last_login_at: datetime | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserUpdate(BaseModel):
+    username: str | None = Field(default=None, min_length=1, max_length=20)
+    email: EmailStr | None = Field(default=None, max_length=50)
+    name: str | None = Field(default=None, min_length=1, max_length=20)
+    phone: str | None = Field(
+        default=None,
+        min_length=12,
+        max_length=12,
+        pattern=r"^\+92[0-9]{10}$",
+    )
+    role: Role | None = None
+    status: bool | None = None
+    password: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=255,
+    )
+
+class CategoryBase(BaseModel):
+    name: str = Field(min_length=1, max_length=15)
+    description: str = Field(max_length=255)
+
+
+class CategoryCreate(CategoryBase):
+    pass
+
+
+class CategoryResponse(CategoryBase):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CategoryUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=15)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class SupplierBase(BaseModel):
+    name: str = Field(min_length=1, max_length=20)
+    contact_person: str = Field(min_length=1, max_length=20)
+    email: EmailStr = Field(max_length=50)
+    phone: str = Field(
+        min_length=12,
+        max_length=12,
+        pattern=r"^\+92[0-9]{10}$",
+    )
+    address: str = Field(min_length=1, max_length=100)
+    status: bool = True
+
+
+class SupplierCreate(SupplierBase):
+    pass
+
+
+class SupplierResponse(SupplierBase):
+    id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SupplierUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=20)
+    contact_person: str | None = Field(default=None, min_length=1, max_length=20)
+    email: EmailStr | None = Field(default=None, max_length=50)
+    phone: str | None = Field(
+        default=None,
+        min_length=12,
+        max_length=12,
+        pattern=r"^\+92[0-9]{10}$",
+    )
+    address: str | None = Field(default=None, min_length=1, max_length=100)
+    status: bool | None = None
+
+
+class ProductBase(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+    description: str = Field(max_length=150)
+    category_id: int
+    supplier_id: int
+    cost_price: Decimal = Field(ge=0, decimal_places=2)
+    selling_price: Decimal = Field(gt=0, decimal_places=2)
+    minimum_stock_lvl: int = Field(ge=0)
+    status: bool = True
+
+
+class ProductCreate(ProductBase):
+    pass
+
+
+class ProductResponse(ProductBase):
+    id: int
+    product_code: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=50)
+    description: str | None = Field(default=None, max_length=150)
+    category_id: int | None = None
+    supplier_id: int | None = None
+    cost_price: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=2,
+    )
+    selling_price: Decimal | None = Field(
+        default=None,
+        gt=0,
+        decimal_places=2,
+    )
+    minimum_stock_lvl: int | None = Field(default=None, ge=0)
+    status: bool | None = None
+
+
+class CustomerBase(BaseModel):
+    name: str = Field(min_length=1, max_length=20)
+    email: EmailStr | None = Field(default=None, max_length=50)
+    phone: str | None = Field(
+        default=None,
+        min_length=12,
+        max_length=12,
+        pattern=r"^\+92[0-9]{10}$",
+    )
+    address: str | None = Field(default=None, max_length=100)
+    status: bool = True
+
+
+class CustomerCreate(CustomerBase):
+    pass
+
+
+class CustomerResponse(CustomerBase):
+    id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CustomerUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=20)
+    email: EmailStr | None = Field(default=None, max_length=50)
+    phone: str | None = Field(
+        default=None,
+        min_length=12,
+        max_length=12,
+        pattern=r"^\+92[0-9]{10}$",
+    )
+    address: str | None = Field(default=None, max_length=100)
+    status: bool | None = None
+
+class PurchaseDetailBase(BaseModel):
+    product_id: int
+    quantity: int = Field(gt=0)
+    unit_price: Decimal = Field(gt=0, decimal_places=2)
+
+
+class PurchaseDetailCreate(PurchaseDetailBase):
+    pass
+
+
+class PurchaseDetailResponse(PurchaseDetailBase):
+    id: int
+    purchase_id: int
+    line_total: Decimal = Field(gt=0, decimal_places=2)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PurchaseDetailUpdate(BaseModel):
+    product_id: int | None = None
+    quantity: int | None = Field(default=None, gt=0)
+    unit_price: Decimal | None = Field(
+        default=None,
+        gt=0,
+        decimal_places=2,
+    )
+
+class PurchaseBase(BaseModel):
+    reference_number: str = Field(min_length=1, max_length=50)
+    purchase_date: date
+    supplier_id: int
+    discount: Decimal = Field(
+        default=Decimal("0.00"),
+        ge=0,
+        decimal_places=2,
+    )
+    amount_paid: Decimal = Field(ge=0, decimal_places=2)
+    notes: str | None = None
+
+
+class PurchaseCreate(PurchaseBase):
+    purchase_details: list[PurchaseDetailCreate] = Field(min_length=1)
+
+
+class PurchaseResponse(PurchaseBase):
+    id: int
+    user_id: int
+    subtotal: Decimal = Field(ge=0, decimal_places=2)
+    total: Decimal = Field(ge=0, decimal_places=2)
+    payment_status: PaymentStatus
+    purchase_status: PurchaseStatus
+    created_at: datetime
+    purchase_details: list[PurchaseDetailResponse] = Field(min_length=1)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PurchaseUpdate(BaseModel):
+    reference_number: str | None = Field(default=None, min_length=1, max_length=50)
+    purchase_date: date | None = None
+    supplier_id: int | None = None
+    discount: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=2,
+    )
+    amount_paid: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=2,
+    )
+    purchase_status: PurchaseStatus | None = None
+    notes: str | None = None
+
+class SaleDetailBase(BaseModel):
+    product_id: int
+    quantity: int = Field(gt=0)
+    selling_price: Decimal = Field(gt=0, decimal_places=2)
+
+
+class SaleDetailCreate(SaleDetailBase):
+    pass
+
+
+class SaleDetailResponse(SaleDetailBase):
+    id: int
+    sale_id: int
+    line_total: Decimal = Field(gt=0, decimal_places=2)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SaleDetailUpdate(BaseModel):
+    product_id: int | None = None
+    quantity: int | None = Field(default=None, gt=0)
+    selling_price: Decimal | None = Field(
+        default=None,
+        gt=0,
+        decimal_places=2,
+    )
+
+class SaleBase(BaseModel):
+    invoice_number: str = Field(min_length=1, max_length=50)
+    sale_date: date
+    customer_id: int
+    discount: Decimal = Field(
+        default=Decimal("0.00"),
+        ge=0,
+        decimal_places=2,
+    )
+    amount_paid: Decimal = Field(ge=0, decimal_places=2)
+
+
+class SaleCreate(SaleBase):
+    sale_details: list[SaleDetailCreate] = Field(min_length=1)
+
+
+class SaleResponse(SaleBase):
+    id: int
+    user_id: int
+    subtotal: Decimal = Field(ge=0, decimal_places=2)
+    total: Decimal = Field(ge=0, decimal_places=2)
+    payment_status: PaymentStatus
+    sale_details: list[SaleDetailResponse] = Field(min_length=1)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SaleUpdate(BaseModel):
+    invoice_number: str | None = Field(default=None, min_length=1, max_length=50)
+    sale_date: date | None = None
+    customer_id: int | None = None
+    discount: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=2,
+    )
+    amount_paid: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=2,
+    )
+
+class PaymentBase(BaseModel):
+    amount: Decimal = Field(gt=0, decimal_places=2)
+    method: PaymentMethod
+    note: str | None = None
+
+
+class PaymentCreate(PaymentBase):
+    sale_id: int | None = None
+    purchase_id: int | None = None
+
+    @model_validator(mode="after")
+    def validate_transaction_reference(self):
+        if (self.sale_id is None) == (self.purchase_id is None):
+            raise ValueError("Exactly one of sale_id or purchase_id must be provided.")
+        return self
+
+
+class PaymentResponse(PaymentBase):
+    id: int
+    user_id: int
+    paid_at: datetime
+    sale_id: int | None = None
+    purchase_id: int | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentUpdate(BaseModel):
+    amount: Decimal | None = Field(
+        default=None,
+        gt=0,
+        decimal_places=2,
+    )
+    method: PaymentMethod | None = None
+    note: str | None = None
+
+class StockMovementBase(BaseModel):
+    product_id: int
+    movement_type: StockMovementType
+    quantity_change: int = Field(gt=0)
+    reason: str | None = Field(default=None, max_length=255)
+
+
+class StockMovementCreate(StockMovementBase):
+    sale_id: int | None = None
+    purchase_id: int | None = None
+
+    @model_validator(mode="after")
+    def validate_transaction_reference(self):
+        if (self.sale_id is None) == (self.purchase_id is None):
+            raise ValueError("Exactly one of sale_id or purchase_id must be provided")
+        return self
+
+
+class StockMovementResponse(StockMovementBase):
+    id: int
+    user_id: int
+    sale_id: int | None = None
+    purchase_id: int | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StockMovementUpdate(BaseModel):
+    movement_type: StockMovementType | None = None
+    quantity_change: int | None = Field(default=None, gt=0)
+    reason: str | None = Field(default=None, max_length=255)

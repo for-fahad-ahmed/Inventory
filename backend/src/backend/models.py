@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
+from argon2 import PasswordHasher
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -15,13 +16,11 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from argon2 import PasswordHasher
-
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
-from .enums import Role, PurchaseStatus, PaymentMethod, PaymentStatus, StockMovementType
+from .enums import PaymentMethod, PaymentStatus, PurchaseStatus, Role, StockMovementType
 
 ph = PasswordHasher()
 
@@ -112,9 +111,7 @@ class Product(Base):
     category_id: Mapped[int] = mapped_column(
         ForeignKey("categories.id"), nullable=False
     )
-    supplier_id: Mapped[int] = mapped_column(
-        ForeignKey("suppliers.id"), nullable=False
-    )
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"), nullable=False)
     cost_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     selling_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     minimum_stock_lvl: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -128,9 +125,7 @@ class Product(Base):
     purchase_details: Mapped[list[PurchaseDetail]] = relationship(
         back_populates="product"
     )
-    sale_details: Mapped[list[SaleDetail]] = relationship(
-        back_populates="product"
-    )
+    sale_details: Mapped[list[SaleDetail]] = relationship(back_populates="product")
 
 
 class Customer(Base):

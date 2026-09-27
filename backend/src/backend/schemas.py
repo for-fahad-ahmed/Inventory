@@ -1,9 +1,16 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
-from .enums import Role, PaymentStatus, PaymentMethod, PurchaseStatus, StockMovementType
+from .enums import PaymentMethod, PaymentStatus, PurchaseStatus, Role, StockMovementType
 
 
 class UserBase(BaseModel):
@@ -22,8 +29,9 @@ class UserBase(BaseModel):
     @classmethod
     def normalize_phone(cls, value: str) -> str:
         value = value.removeprefix("+")
-            
+
         return value
+
 
 class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=255)
@@ -54,13 +62,13 @@ class UserUpdate(BaseModel):
         min_length=8,
         max_length=255,
     )
-    
+
     @field_validator("phone", mode="before")
     @classmethod
     def normalize_phone(cls, value: str) -> str:
         value = value.removeprefix("+")
         return value
-    
+
 
 class CategoryBase(BaseModel):
     name: str = Field(min_length=1, max_length=15)
@@ -93,7 +101,7 @@ class SupplierBase(BaseModel):
     )
     address: str = Field(min_length=1, max_length=100)
     status: bool = True
-    
+
     @field_validator("phone", mode="before")
     @classmethod
     def normalize_phone(cls, value: str) -> str:
@@ -124,7 +132,7 @@ class SupplierUpdate(BaseModel):
     )
     address: str | None = Field(default=None, min_length=1, max_length=100)
     status: bool | None = None
-    
+
     @field_validator("phone", mode="before")
     @classmethod
     def normalize_phone(cls, value: str) -> str:
@@ -185,7 +193,7 @@ class CustomerBase(BaseModel):
     )
     address: str | None = Field(default=None, max_length=100)
     status: bool = True
-    
+
     @field_validator("phone", mode="before")
     @classmethod
     def normalize_phone(cls, value: str) -> str:
@@ -215,12 +223,13 @@ class CustomerUpdate(BaseModel):
     )
     address: str | None = Field(default=None, max_length=100)
     status: bool | None = None
-    
+
     @field_validator("phone", mode="before")
     @classmethod
     def normalize_phone(cls, value: str) -> str:
         value = value.removeprefix("+")
         return value
+
 
 class PurchaseDetailBase(BaseModel):
     product_id: int
@@ -248,6 +257,7 @@ class PurchaseDetailUpdate(BaseModel):
         gt=0,
         decimal_places=2,
     )
+
 
 class PurchaseBase(BaseModel):
     reference_number: str = Field(min_length=1, max_length=50)
@@ -296,6 +306,7 @@ class PurchaseUpdate(BaseModel):
     purchase_status: PurchaseStatus | None = None
     notes: str | None = None
 
+
 class SaleDetailBase(BaseModel):
     product_id: int
     quantity: int = Field(gt=0)
@@ -322,6 +333,7 @@ class SaleDetailUpdate(BaseModel):
         gt=0,
         decimal_places=2,
     )
+
 
 class SaleBase(BaseModel):
     invoice_number: str = Field(min_length=1, max_length=50)
@@ -365,6 +377,7 @@ class SaleUpdate(BaseModel):
         decimal_places=2,
     )
 
+
 class PaymentBase(BaseModel):
     amount: Decimal = Field(gt=0, decimal_places=2)
     method: PaymentMethod
@@ -400,6 +413,7 @@ class PaymentUpdate(BaseModel):
     )
     method: PaymentMethod | None = None
     note: str | None = None
+
 
 class StockMovementBase(BaseModel):
     product_id: int

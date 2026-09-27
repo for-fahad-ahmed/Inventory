@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator, field_validator
 
 from .enums import Role, PaymentStatus, PaymentMethod, PurchaseStatus, StockMovementType
 
@@ -13,11 +13,17 @@ class UserBase(BaseModel):
     phone: str = Field(
         min_length=12,
         max_length=12,
-        pattern=r"^\+92[0-9]{10}$",
+        pattern=r"^92[0-9]{10}$",
     )
     role: Role
     status: bool = True
 
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_phone(cls, value: str) -> str:
+        value = value.removeprefix("+")
+            
+        return value
 
 class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=255)
@@ -39,7 +45,7 @@ class UserUpdate(BaseModel):
         default=None,
         min_length=12,
         max_length=12,
-        pattern=r"^\+92[0-9]{10}$",
+        pattern=r"^92[0-9]{10}$",
     )
     role: Role | None = None
     status: bool | None = None
@@ -48,6 +54,13 @@ class UserUpdate(BaseModel):
         min_length=8,
         max_length=255,
     )
+    
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_phone(cls, value: str) -> str:
+        value = value.removeprefix("+")
+        return value
+    
 
 class CategoryBase(BaseModel):
     name: str = Field(min_length=1, max_length=15)
@@ -76,10 +89,16 @@ class SupplierBase(BaseModel):
     phone: str = Field(
         min_length=12,
         max_length=12,
-        pattern=r"^\+92[0-9]{10}$",
+        pattern=r"^92[0-9]{10}$",
     )
     address: str = Field(min_length=1, max_length=100)
     status: bool = True
+    
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_phone(cls, value: str) -> str:
+        value = value.removeprefix("+")
+        return value
 
 
 class SupplierCreate(SupplierBase):
@@ -101,10 +120,16 @@ class SupplierUpdate(BaseModel):
         default=None,
         min_length=12,
         max_length=12,
-        pattern=r"^\+92[0-9]{10}$",
+        pattern=r"^92[0-9]{10}$",
     )
     address: str | None = Field(default=None, min_length=1, max_length=100)
     status: bool | None = None
+    
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_phone(cls, value: str) -> str:
+        value = value.removeprefix("+")
+        return value
 
 
 class ProductBase(BaseModel):
@@ -156,10 +181,16 @@ class CustomerBase(BaseModel):
         default=None,
         min_length=12,
         max_length=12,
-        pattern=r"^\+92[0-9]{10}$",
+        pattern=r"^92[0-9]{10}$",
     )
     address: str | None = Field(default=None, max_length=100)
     status: bool = True
+    
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_phone(cls, value: str) -> str:
+        value = value.removeprefix("+")
+        return value
 
 
 class CustomerCreate(CustomerBase):
@@ -180,10 +211,16 @@ class CustomerUpdate(BaseModel):
         default=None,
         min_length=12,
         max_length=12,
-        pattern=r"^\+92[0-9]{10}$",
+        pattern=r"^92[0-9]{10}$",
     )
     address: str | None = Field(default=None, max_length=100)
     status: bool | None = None
+    
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_phone(cls, value: str) -> str:
+        value = value.removeprefix("+")
+        return value
 
 class PurchaseDetailBase(BaseModel):
     product_id: int

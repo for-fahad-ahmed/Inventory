@@ -62,7 +62,8 @@ def get_user(id: int, db: Session = Depends(get_db)):
 
     if user is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with: {id} not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id: {id} not found",
         )
 
     return user
@@ -74,7 +75,7 @@ def get_users(db: Session = Depends(get_db)):
     return users
 
 
-@router.put("/{id}", response_model=UserResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.put("/{id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
 def update_user_full(id: int, user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.scalar(select(models.User).where(models.User.id == id))
 
@@ -127,9 +128,7 @@ def update_user_full(id: int, user: UserCreate, db: Session = Depends(get_db)):
     return existing_user
 
 
-@router.patch(
-    "/{id}", response_model=UserResponse, status_code=status.HTTP_202_ACCEPTED
-)
+@router.patch("/{id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
 def update_user_partial(id: int, user: UserUpdate, db: Session = Depends(get_db)):
     user_data = user.model_dump(exclude_unset=True)
 
@@ -142,7 +141,7 @@ def update_user_partial(id: int, user: UserUpdate, db: Session = Depends(get_db)
 
     if not existing_user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User with id: {id} not found"
         )
 
     if "username" in user_data:
@@ -208,7 +207,8 @@ def delete_user(id: int, db: Session = Depends(get_db)):
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id: {id} not found",
         )
 
     db.delete(user)

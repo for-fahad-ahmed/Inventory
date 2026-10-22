@@ -10,7 +10,18 @@ from pydantic import (
     model_validator,
 )
 
-from .enums import PaymentMethod, PaymentStatus, PurchaseStatus, Role, StockMovementType
+from backend.enums import (
+    PaymentMethod,
+    PaymentStatus,
+    PurchaseStatus,
+    Role,
+    StockMovementType,
+)
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 
 class UserBase(BaseModel):
@@ -27,10 +38,10 @@ class UserBase(BaseModel):
 
     @field_validator("phone", mode="before")
     @classmethod
-    def normalize_phone(cls, value: str) -> str:
-        value = value.removeprefix("+")
-
-        return value
+    def normalize_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.removeprefix("+")
 
 
 class UserCreate(UserBase):
@@ -65,9 +76,10 @@ class UserUpdate(BaseModel):
 
     @field_validator("phone", mode="before")
     @classmethod
-    def normalize_phone(cls, value: str) -> str:
-        value = value.removeprefix("+")
-        return value
+    def normalize_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.removeprefix("+")
 
 
 class CategoryBase(BaseModel):
@@ -104,9 +116,10 @@ class SupplierBase(BaseModel):
 
     @field_validator("phone", mode="before")
     @classmethod
-    def normalize_phone(cls, value: str) -> str:
-        value = value.removeprefix("+")
-        return value
+    def normalize_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.removeprefix("+")
 
 
 class SupplierCreate(SupplierBase):
@@ -135,9 +148,10 @@ class SupplierUpdate(BaseModel):
 
     @field_validator("phone", mode="before")
     @classmethod
-    def normalize_phone(cls, value: str) -> str:
-        value = value.removeprefix("+")
-        return value
+    def normalize_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.removeprefix("+")
 
 
 class ProductBase(BaseModel):
@@ -145,8 +159,8 @@ class ProductBase(BaseModel):
     description: str = Field(max_length=150)
     category_id: int
     supplier_id: int
-    cost_price: Decimal = Field(ge=0, decimal_places=2)
-    selling_price: Decimal = Field(gt=0, decimal_places=2)
+    cost_price: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+    selling_price: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
     minimum_stock_lvl: int = Field(ge=0)
     status: bool = True
 
@@ -171,11 +185,13 @@ class ProductUpdate(BaseModel):
     cost_price: Decimal | None = Field(
         default=None,
         ge=0,
+        max_digits=12,
         decimal_places=2,
     )
     selling_price: Decimal | None = Field(
         default=None,
         gt=0,
+        max_digits=12,
         decimal_places=2,
     )
     minimum_stock_lvl: int | None = Field(default=None, ge=0)
@@ -196,9 +212,10 @@ class CustomerBase(BaseModel):
 
     @field_validator("phone", mode="before")
     @classmethod
-    def normalize_phone(cls, value: str) -> str:
-        value = value.removeprefix("+")
-        return value
+    def normalize_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.removeprefix("+")
 
 
 class CustomerCreate(CustomerBase):
@@ -226,15 +243,16 @@ class CustomerUpdate(BaseModel):
 
     @field_validator("phone", mode="before")
     @classmethod
-    def normalize_phone(cls, value: str) -> str:
-        value = value.removeprefix("+")
-        return value
+    def normalize_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.removeprefix("+")
 
 
 class PurchaseDetailBase(BaseModel):
     product_id: int
     quantity: int = Field(gt=0)
-    unit_price: Decimal = Field(gt=0, decimal_places=2)
+    unit_price: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
 
 
 class PurchaseDetailCreate(PurchaseDetailBase):
@@ -255,6 +273,7 @@ class PurchaseDetailUpdate(BaseModel):
     unit_price: Decimal | None = Field(
         default=None,
         gt=0,
+        max_digits=12,
         decimal_places=2,
     )
 
@@ -264,9 +283,7 @@ class PurchaseBase(BaseModel):
     purchase_date: date
     supplier_id: int
     discount: Decimal = Field(
-        default=Decimal("0.00"),
-        ge=0,
-        decimal_places=2,
+        default=Decimal("0.00"), ge=0, decimal_places=2, max_digits=12
     )
     amount_paid: Decimal = Field(ge=0, decimal_places=2)
     notes: str | None = None
@@ -296,21 +313,34 @@ class PurchaseUpdate(BaseModel):
     discount: Decimal | None = Field(
         default=None,
         ge=0,
+        max_digits=12,
         decimal_places=2,
     )
     amount_paid: Decimal | None = Field(
         default=None,
         ge=0,
+        max_digits=12,
         decimal_places=2,
     )
     purchase_status: PurchaseStatus | None = None
     notes: str | None = None
+    purchase_details: list[PurchaseDetailCreate] | None = Field(
+        default=None, min_length=1
+    )
+
+    @model_validator(mode="after")
+    def reject_null_non_nullable_fields(self):
+        nullable_fields = {"notes", "purchase_details"}
+        for field_name in self.model_fields_set:
+            if getattr(self, field_name) is None and field_name not in nullable_fields:
+                raise ValueError(f"{field_name} cannot be null")
+        return self
 
 
 class SaleDetailBase(BaseModel):
     product_id: int
     quantity: int = Field(gt=0)
-    selling_price: Decimal = Field(gt=0, decimal_places=2)
+    selling_price: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
 
 
 class SaleDetailCreate(SaleDetailBase):
@@ -342,9 +372,10 @@ class SaleBase(BaseModel):
     discount: Decimal = Field(
         default=Decimal("0.00"),
         ge=0,
+        max_digits=12,
         decimal_places=2,
     )
-    amount_paid: Decimal = Field(ge=0, decimal_places=2)
+    amount_paid: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
 
 
 class SaleCreate(SaleBase):
@@ -369,11 +400,13 @@ class SaleUpdate(BaseModel):
     discount: Decimal | None = Field(
         default=None,
         ge=0,
+        max_digits=12,
         decimal_places=2,
     )
     amount_paid: Decimal | None = Field(
         default=None,
         ge=0,
+        max_digits=12,
         decimal_places=2,
     )
 

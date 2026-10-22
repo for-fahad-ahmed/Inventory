@@ -19,8 +19,14 @@ from sqlalchemy import (
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .database import Base
-from .enums import PaymentMethod, PaymentStatus, PurchaseStatus, Role, StockMovementType
+from backend.database import Base
+from backend.enums import (
+    PaymentMethod,
+    PaymentStatus,
+    PurchaseStatus,
+    Role,
+    StockMovementType,
+)
 
 ph = PasswordHasher()
 
@@ -152,10 +158,19 @@ class Purchase(Base):
     __tablename__ = "purchases"
 
     __table_args__ = (
-        CheckConstraint("(subtotal) >= 0", name="positive_subtotal"),
-        CheckConstraint("(discount) >= 0", name="positive_discount"),
-        CheckConstraint("(total) >= 0", name="positive_total"),
-        CheckConstraint("(amount_paid) >= 0", name="positive_amount_paid"),
+        CheckConstraint("subtotal >= 0", name="positive_subtotal"),
+        CheckConstraint("discount >= 0", name="positive_discount"),
+        CheckConstraint("total >= 0", name="positive_total"),
+        CheckConstraint("amount_paid >= 0", name="positive_amount_paid"),
+        CheckConstraint(
+            "discount <= subtotal", name="discount_not_greater_than_subtotal"
+        ),
+        CheckConstraint(
+            "amount_paid <= total", name="amount_paid_not_greater_than_total"
+        ),
+        CheckConstraint(
+            "total = subtotal - discount", name="purchase_total_matches_subtotal"
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -212,6 +227,10 @@ class PurchaseDetail(Base):
         CheckConstraint("(quantity) > 0", name="positive_quantity"),
         CheckConstraint("(unit_price) > 0", name="positive_unit_price"),
         CheckConstraint("(line_total) > 0", name="positive_line_total"),
+        CheckConstraint(
+            "line_total = quantity * unit_price",
+            name="purchase_line_total_matches_quantity_price",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -242,6 +261,15 @@ class Sale(Base):
         CheckConstraint("(discount) >= 0", name="positive_discount"),
         CheckConstraint("(total) >= 0", name="positive_total"),
         CheckConstraint("(amount_paid) >= 0", name="positive_amount_paid"),
+        CheckConstraint(
+            "discount <= subtotal", name="sale_discount_not_greater_than_subtotal"
+        ),
+        CheckConstraint(
+            "amount_paid <= total", name="sale_amount_paid_not_greater_than_total"
+        ),
+        CheckConstraint(
+            "total = subtotal - discount", name="sale_total_matches_subtotal"
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -291,6 +319,10 @@ class SaleDetail(Base):
         CheckConstraint("(quantity) > 0", name="positive_quantity"),
         CheckConstraint("(selling_price) > 0", name="positive_selling_price"),
         CheckConstraint("(line_total) > 0", name="positive_line_total"),
+        CheckConstraint(
+            "line_total = quantity * selling_price",
+            name="sale_line_total_matches_quantity_price",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

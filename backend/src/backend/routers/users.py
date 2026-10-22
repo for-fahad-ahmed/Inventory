@@ -3,11 +3,15 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import models
-from ..database import get_db
-from ..schemas import UserCreate, UserResponse, UserUpdate
+from backend import models
+from backend.database import get_db
+from backend.dependencies import require_roles
+from backend.enums import Role
+from backend.schemas import UserCreate, UserResponse, UserUpdate
 
-router = APIRouter(prefix="/users", tags=["Users"])
+router = APIRouter(
+    prefix="/users", tags=["Users"], dependencies=[Depends(require_roles(Role.OWNER))]
+)
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -141,7 +145,8 @@ def update_user_partial(id: int, user: UserUpdate, db: Session = Depends(get_db)
 
     if not existing_user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User with id: {id} not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id: {id} not found",
         )
 
     if "username" in user_data:
@@ -211,5 +216,5 @@ def delete_user(id: int, db: Session = Depends(get_db)):
             detail=f"User with id: {id} not found",
         )
 
-    db.delete(user)
+    user.status = False
     db.commit()

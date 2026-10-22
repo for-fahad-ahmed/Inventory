@@ -3,11 +3,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import models
-from ..database import get_db
-from ..schemas import CustomerCreate, CustomerResponse, CustomerUpdate
+from backend import models
+from backend.database import get_db
+from backend.dependencies import get_current_user
+from backend.schemas import CustomerCreate, CustomerResponse, CustomerUpdate
 
-router = APIRouter(prefix="/customers", tags=["Customers"])
+router = APIRouter(
+    prefix="/customers", tags=["Customers"], dependencies=[Depends(get_current_user)]
+)
 
 
 @router.post("/", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
@@ -140,7 +143,7 @@ def update_customer_partial(
     if not existing_customer:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Customer with id: {id} not found",
+            detail=f"Customer with id: {id} not found",
         )
 
     if "email" in customer_data:

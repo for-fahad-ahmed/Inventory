@@ -5,11 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import models
-from ..database import get_db
-from ..schemas import ProductCreate, ProductResponse, ProductUpdate
+from backend import models
+from backend.database import get_db
+from backend.dependencies import get_current_user
+from backend.schemas import ProductCreate, ProductResponse, ProductUpdate
 
-router = APIRouter(prefix="/products", tags=["products"])
+router = APIRouter(
+    prefix="/products", tags=["products"], dependencies=[Depends(get_current_user)]
+)
 
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
@@ -31,9 +34,8 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_product)
 
-    except IntegrityError as e:
+    except IntegrityError:
         db.rollback()
-        print("INTEGRIY ERROR: ", e)
 
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -63,9 +65,7 @@ def get_product(id: int, db: Session = Depends(get_db)):
     return product
 
 
-@router.put(
-    "/{id}", response_model=ProductResponse, status_code=status.HTTP_404_NOT_FOUND
-)
+@router.put("/{id}", response_model=ProductResponse, status_code=status.HTTP_200_OK)
 def update_product_full(id: int, product: ProductCreate, db: Session = Depends(get_db)):
     existing_product = db.scalar(select(models.Product).where(models.Product.id == id))
 
@@ -108,7 +108,7 @@ def update_product_partial(
     if not existing_product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product with id: {id} not found",
+            detail=f"Product with id: {id} not found",
         )
 
     product_data = product.model_dump(exclude_unset=True)
@@ -142,7 +142,7 @@ def delete_product(id: int, db: Session = Depends(get_db)):
     if not existing_product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product with id: {id} not found",
+            detail=f"Product with id: {id} not found",
         )
 
     try:

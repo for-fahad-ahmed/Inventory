@@ -3,11 +3,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import models
-from ..database import get_db
-from ..schemas import SupplierCreate, SupplierResponse, SupplierUpdate
+from backend import models
+from backend.database import get_db
+from backend.dependencies import get_current_user
+from backend.schemas import SupplierCreate, SupplierResponse, SupplierUpdate
 
-router = APIRouter(prefix="/suppliers", tags=["suppliers"])
+router = APIRouter(
+    prefix="/suppliers", tags=["suppliers"], dependencies=[Depends(get_current_user)]
+)
 
 
 @router.post("/", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)

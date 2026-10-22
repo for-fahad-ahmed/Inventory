@@ -3,11 +3,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import models
-from ..database import get_db
-from ..schemas import CategoryCreate, CategoryResponse, CategoryUpdate
+from backend import models
+from backend.database import get_db
+from backend.dependencies import get_current_user
+from backend.schemas import CategoryCreate, CategoryResponse, CategoryUpdate
 
-router = APIRouter(prefix="/categories", tags=["categories"])
+router = APIRouter(
+    prefix="/categories", tags=["categories"], dependencies=[Depends(get_current_user)]
+)
 
 
 @router.post("/", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)

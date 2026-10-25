@@ -132,6 +132,32 @@ class Product(Base):
         back_populates="product"
     )
     sale_details: Mapped[list[SaleDetail]] = relationship(back_populates="product")
+    inventory: Mapped[Inventory | None] = relationship(
+        back_populates="product",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
+
+class Inventory(Base):
+    __tablename__ = "inventory"
+
+    __table_args__ = (
+        CheckConstraint("quantity_on_hand >= 0", name="non_negative_quantity_on_hand"),
+    )
+
+    product_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("products.id"), primary_key=True
+    )
+    quantity_on_hand: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    product: Mapped[Product] = relationship(back_populates="inventory")
 
 
 class Customer(Base):

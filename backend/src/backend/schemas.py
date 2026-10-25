@@ -198,6 +198,15 @@ class ProductUpdate(BaseModel):
     status: bool | None = None
 
 
+class InventoryResponse(BaseModel):
+    product_id: int
+    quantity_on_hand: int
+    updated_at: datetime
+    product: ProductResponse
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class CustomerBase(BaseModel):
     name: str = Field(min_length=1, max_length=20)
     email: EmailStr | None = Field(default=None, max_length=50)
@@ -307,32 +316,29 @@ class PurchaseResponse(PurchaseBase):
 
 
 class PurchaseUpdate(BaseModel):
+    """Only fields that don't affect stock or totals.
+
+    Lines, supplier, discount and status are fixed once a purchase is posted;
+    to undo a purchase use POST /purchases/{id}/cancel. Unknown fields are
+    rejected (422) instead of being silently ignored.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     reference_number: str | None = Field(default=None, min_length=1, max_length=50)
     purchase_date: date | None = None
-    supplier_id: int | None = None
-    discount: Decimal | None = Field(
-        default=None,
-        ge=0,
-        max_digits=12,
-        decimal_places=2,
-    )
     amount_paid: Decimal | None = Field(
         default=None,
         ge=0,
         max_digits=12,
         decimal_places=2,
     )
-    purchase_status: PurchaseStatus | None = None
     notes: str | None = None
-    purchase_details: list[PurchaseDetailCreate] | None = Field(
-        default=None, min_length=1
-    )
 
     @model_validator(mode="after")
     def reject_null_non_nullable_fields(self):
-        nullable_fields = {"notes", "purchase_details"}
         for field_name in self.model_fields_set:
-            if getattr(self, field_name) is None and field_name not in nullable_fields:
+            if getattr(self, field_name) is None and field_name != "notes":
                 raise ValueError(f"{field_name} cannot be null")
         return self
 
@@ -394,15 +400,17 @@ class SaleResponse(SaleBase):
 
 
 class SaleUpdate(BaseModel):
+    """Only fields that don't affect stock or totals.
+
+    Sale lines and discount are fixed once a sale is created (stock has
+    already been deducted). Unknown fields are rejected (422).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     invoice_number: str | None = Field(default=None, min_length=1, max_length=50)
     sale_date: date | None = None
     customer_id: int | None = None
-    discount: Decimal | None = Field(
-        default=None,
-        ge=0,
-        max_digits=12,
-        decimal_places=2,
-    )
     amount_paid: Decimal | None = Field(
         default=None,
         ge=0,
@@ -458,6 +466,7 @@ class StockMovementBase(BaseModel):
 class StockMovementCreate(StockMovementBase):
     sale_id: int | None = None
     purchase_id: int | None = None
+    user_id: int
 
     @model_validator(mode="after")
     def validate_transaction_reference(self):

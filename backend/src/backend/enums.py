@@ -27,3 +27,4 @@ class PaymentMethod(str, Enum):
 class StockMovementType(str, Enum):
     PURCHASE = "purchase"
     SALE = "sale"
+    PURCHASE_CANCELLATION = "purchase_cancellation"

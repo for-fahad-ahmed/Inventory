@@ -4,8 +4,10 @@ from backend.routers import (
     auth,
     categories,
     customers,
+    inventory,
     products,
     purchases,
+    sales,
     suppliers,
     users,
 )
@@ -18,7 +20,7 @@ app.include_router(customers.router)
 # app.include_router(payments.router)
 app.include_router(products.router)
 app.include_router(purchases.router)
-# app.include_router(sales.router)
-# app.include_router(stockmovements.router)
+app.include_router(sales.router)
 app.include_router(suppliers.router)
 app.include_router(users.router)
+app.include_router(inventory.router)

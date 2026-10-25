@@ -1,7 +1,8 @@
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -10,6 +11,7 @@ from backend.database import get_db
 from backend.dependencies import get_current_user
 from backend.enums import PaymentStatus, PurchaseStatus, Role, StockMovementType
 from backend.schemas import (
+    PaginatedPurchasesResponse,
     PurchaseCreate,
     PurchaseResponse,
     PurchaseUpdate,
@@ -65,6 +67,9 @@ def get_authorized_purchase(db: Session, purchase_id: int, current_user: models.
         statement = statement.where(models.Purchase.user_id == current_user.id)
     purchase = db.scalar(
         statement.options(selectinload(models.Purchase.purchase_details))
+        .order_by(models.Purchase.id.desc())
+        .offset(skip)
+        .limit(limit)
     )
     if purchase is None:
         raise HTTPException(
@@ -199,7 +204,9 @@ def create_purchase(
     return new_purchase
 
 
-@router.get("/{id}", response_model=PurchaseResponse, status_code=status.HTTP_200_OK)
+@router.get(
+    "/{id}", response_model=PaginatedPurchasesResponse, status_code=status.HTTP_200_OK
+)
 def get_purchase(
     id: int,
     db: Session = Depends(get_db),
@@ -212,23 +219,46 @@ def get_purchase(
 
 @router.get("/", response_model=list[PurchaseResponse], status_code=status.HTTP_200_OK)
 def get_purchases(
-    db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
 ):
     if current_user.role == Role.OWNER:
+        total_purchases = db.scalar(select(func.count()).select_from(models.Purchase))
+
         purchases = db.scalars(
             select(models.Purchase).options(
                 selectinload(models.Purchase.purchase_details)
             )
         ).all()
 
+        has_more = skip + len(purchases) < total_purchases
+
     else:
+        total_purchases = db.scalar(
+            select(func.count())
+            .select_from(models.Purchase)
+            .where(models.Purchase.id == current_user.id)
+        )
         purchases = db.scalars(
             select(models.Purchase)
             .where(models.Purchase.user_id == current_user.id)
             .options(selectinload(models.Purchase.purchase_details))
+            .order_by(models.Purchase.id.desc())
+            .offset(skip)
+            .limit(limit)
         ).all()
 
-    return purchases
+        has_more = skip + len(purchases) < total_purchases
+
+    return PaginatedPurchasesResponse(
+        purchases=[PurchaseResponse.model_validate(purchase) for purchase in purchases],
+        total=total_purchases,
+        skip=skip,
+        limit=limit,
+        has_more=has_more,
+    )
 
 
 @router.patch("/{id}", response_model=PurchaseResponse, status_code=status.HTTP_200_OK)

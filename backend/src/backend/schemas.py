@@ -315,6 +315,14 @@ class PurchaseResponse(PurchaseBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PaginatedPurchasesResponse(BaseModel):
+    purchases: list[PurchaseResponse]
+    total: int
+    skip: int
+    limit: int
+    has_more: bool
+
+
 class PurchaseUpdate(BaseModel):
     """Only fields that don't affect stock or totals.
 

@@ -8,21 +8,23 @@ from sqlalchemy.orm import Session, selectinload
 from backend import models
 from backend.database import get_db
 from backend.dependencies import get_current_user
-from backend.enums import PaymentStatus, PurchaseStatus, Role
-from backend.schemas import PurchaseCreate, PurchaseResponse, PurchaseUpdate
+from backend.enums import PaymentStatus, PurchaseStatus, Role, StockMovementType
+from backend.schemas import (
+    PurchaseCreate,
+    PurchaseResponse,
+    PurchaseUpdate,
+)
+from backend.stock import apply_detail_movements
 
 CENT = Decimal("0.01")
 ZERO = Decimal("0.00")
 
 
-def money(value: Decimal) -> Decimal:
+def money(value: Decimal):
     return Decimal(str(value)).quantize(CENT, rounding=ROUND_HALF_UP)
 
 
-def build_purchase_details(
-    detail_inputs: list, db: Session
-) -> list[models.PurchaseDetail]:
-    """Validate product references and construct complete ORM detail rows."""
+def build_purchase_details(detail_inputs: list, db: Session):
     product_ids = {detail.product_id for detail in detail_inputs}
     products = db.scalars(
         select(models.Product).where(models.Product.id.in_(product_ids))
@@ -160,7 +162,7 @@ def create_purchase(
         supplier_id=purchase.supplier_id,
         user_id=current_user.id,
         subtotal=subtotal,
-        discount=purchase.discount,
+        discount=money(purchase.discount),
         total=total,
         amount_paid=money(purchase.amount_paid),
         payment_status=payment_status,
@@ -168,9 +170,19 @@ def create_purchase(
         notes=purchase.notes,
         purchase_details=details,
     )
-
     try:
         db.add(new_purchase)
+        db.flush()
+
+        apply_detail_movements(
+            db,
+            new_purchase.purchase_details,
+            movement_type=StockMovementType.PURCHASE,
+            user_id=current_user.id,
+            purchase_id=new_purchase.id,
+            reason=f"Purchase {new_purchase.reference_number}",
+        )
+
         db.commit()
         db.refresh(new_purchase)
 
@@ -180,6 +192,9 @@ def create_purchase(
             status_code=status.HTTP_409_CONFLICT,
             detail="Could not create purchase due to a database constraint",
         )
+    except HTTPException:
+        db.rollback()
+        raise
 
     return new_purchase
 
@@ -216,72 +231,6 @@ def get_purchases(
     return purchases
 
 
-@router.put("/{id}", response_model=PurchaseResponse, status_code=status.HTTP_200_OK)
-def update_purchase_full(
-    id: int,
-    purchase: PurchaseCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    existing_purchase = get_authorized_purchase(db, id, current_user)
-
-    reference_number_exists = db.scalar(
-        select(models.Purchase.id).where(
-            models.Purchase.reference_number == purchase.reference_number,
-            models.Purchase.id != id,
-        )
-    )
-
-    if reference_number_exists:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Purchase reference number already exists",
-        )
-
-    supplier = db.get(models.Supplier, purchase.supplier_id)
-
-    if supplier is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Supplier not found"
-        )
-    if not supplier.status:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Cannot use an inactive supplier",
-        )
-
-    details = build_purchase_details(purchase.purchase_details, db)
-
-    subtotal, total, payment_status = calculate_purchase_totals(
-        details, purchase.discount, purchase.amount_paid
-    )
-
-    try:
-        existing_purchase.reference_number = purchase.reference_number
-        existing_purchase.purchase_date = purchase.purchase_date
-        existing_purchase.supplier_id = purchase.supplier_id
-        existing_purchase.subtotal = subtotal
-        existing_purchase.discount = purchase.discount
-        existing_purchase.total = total
-        existing_purchase.amount_paid = money(purchase.amount_paid)
-        existing_purchase.payment_status = payment_status
-        existing_purchase.purchase_status = PurchaseStatus.COMPLETED
-        existing_purchase.notes = purchase.notes
-        existing_purchase.purchase_details = details
-
-        db.commit()
-        db.refresh(existing_purchase)
-
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Could not update purchase due to a database constraint",
-        )
-
-    return existing_purchase
-
-
 @router.patch("/{id}", response_model=PurchaseResponse, status_code=status.HTTP_200_OK)
 def update_purchase_partial(
     id: int,
@@ -297,14 +246,11 @@ def update_purchase_partial(
 
     existing_purchase = get_authorized_purchase(db, id, current_user)
 
-    # Fields that map to non-nullable database columns cannot be explicitly cleared.
-    nullable_fields = {"notes"}
-    for key, value in purchase_data.items():
-        if value is None and key not in nullable_fields:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Field '{key}' cannot be null",
-            )
+    if existing_purchase.purchase_status == PurchaseStatus.CANCELLED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cancelled purchases cannot be edited",
+        )
 
     if "reference_number" in purchase_data:
         duplicate = db.scalar(
@@ -319,47 +265,16 @@ def update_purchase_partial(
                 detail="Purchase reference number already exists",
             )
 
-    if "supplier_id" in purchase_data:
-        supplier = db.get(models.Supplier, purchase_data["supplier_id"])
-        if supplier is None:
-            raise HTTPException(status_code=404, detail="Supplier not found")
-        if not supplier.status:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Cannot use an inactive supplier",
-            )
-
-    details = None
-    if "purchase_details" in purchase_data:
-        detail_inputs = purchase_data.pop("purchase_details")
-        if detail_inputs is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="purchase_details cannot be null",
-            )
-        details = build_purchase_details(detail_inputs, db)
-
-    # Apply the candidate values first, then validate the resulting transaction as a whole.
-    candidate_discount = purchase_data.get("discount", existing_purchase.discount)
-    candidate_amount_paid = purchase_data.get(
-        "amount_paid", existing_purchase.amount_paid
-    )
-    candidate_details = (
-        details if details is not None else existing_purchase.purchase_details
-    )
-    subtotal, total, payment_status = calculate_purchase_totals(
-        candidate_details, candidate_discount, candidate_amount_paid
+    amount_paid = purchase_data.get("amount_paid", existing_purchase.amount_paid)
+    _, _, payment_status = calculate_purchase_totals(
+        existing_purchase.purchase_details, existing_purchase.discount, amount_paid
     )
 
     try:
         for key, value in purchase_data.items():
             setattr(existing_purchase, key, value)
-        if details is not None:
-            existing_purchase.purchase_details = details
-        existing_purchase.subtotal = subtotal
-        existing_purchase.discount = money(candidate_discount)
-        existing_purchase.total = total
-        existing_purchase.amount_paid = money(candidate_amount_paid)
+
+        existing_purchase.amount_paid = money(amount_paid)
         existing_purchase.payment_status = payment_status
 
         db.commit()
@@ -370,6 +285,49 @@ def update_purchase_partial(
             status_code=status.HTTP_409_CONFLICT,
             detail="Could not update purchase due to a database constraint",
         )
+
+    return existing_purchase
+
+
+@router.post(
+    "/{id}/cancel", response_model=PurchaseResponse, status_code=status.HTTP_200_OK
+)
+def cancel_purchase(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    existing_purchase = get_authorized_purchase(db, id, current_user)
+
+    if existing_purchase.purchase_status == PurchaseStatus.CANCELLED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Purchase is already cancelled",
+        )
+
+    try:
+        if existing_purchase.purchase_status == PurchaseStatus.COMPLETED:
+            apply_detail_movements(
+                db,
+                existing_purchase.purchase_details,
+                movement_type=StockMovementType.PURCHASE_CANCELLATION,
+                user_id=current_user.id,
+                purchase_id=existing_purchase.id,
+                reason=f"Cancelled purchase {existing_purchase.reference_number}",
+            )
+
+        existing_purchase.purchase_status = PurchaseStatus.CANCELLED
+        db.commit()
+        db.refresh(existing_purchase)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Could not cancel purchase due to a database constraint",
+        )
+    except HTTPException:
+        db.rollback()
+        raise
 
     return existing_purchase
 

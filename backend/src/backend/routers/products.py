@@ -24,10 +24,16 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
             detail=f"Category with id: {product.category_id} not found",
         )
 
-    if db.get(models.Supplier, product.supplier_id) is None:
+    supplier = db.get(models.Supplier, product.supplier_id)
+    if supplier is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Supplier with id: {product.supplier_id} not found",
+        )
+    if not supplier.status:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot create a product for an inactive supplier",
         )
 
     new_product = models.Product(
@@ -68,7 +74,7 @@ def get_products(db: Session = Depends(get_db)):
 
 @router.get("/{id}", response_model=ProductResponse, status_code=status.HTTP_200_OK)
 def get_product(id: int, db: Session = Depends(get_db)):
-    product = db.scalar(select(models.Product).where(models.Product.id == id))
+    product = db.get(models.Product, id)
 
     if not product:
         raise HTTPException(
@@ -86,7 +92,7 @@ def update_product_full(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    existing_product = db.scalar(select(models.Product).where(models.Product.id == id))
+    existing_product = db.get(models.Product, id)
 
     if not existing_product:
         raise HTTPException(
@@ -110,10 +116,16 @@ def update_product_full(
             detail=f"Category with id: {product.category_id} not found",
         )
 
-    if db.get(models.Supplier, product.supplier_id) is None:
+    supplier = db.get(models.Supplier, product.supplier_id)
+    if supplier is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Supplier with id: {product.supplier_id} not found",
+        )
+    if product.supplier_id != existing_product.supplier_id and not supplier.status:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot assign product to an inactive supplier",
         )
 
     existing_product.name = product.name
@@ -147,7 +159,7 @@ def update_product_partial(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    existing_product = db.scalar(select(models.Product).where(models.Product.id == id))
+    existing_product = db.get(models.Product, id)
 
     if not existing_product:
         raise HTTPException(
@@ -161,14 +173,6 @@ def update_product_partial(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="No data provided"
         )
-
-    # None of the product fields are nullable
-    for key, value in product_data.items():
-        if value is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Field '{key}' cannot be null",
-            )
 
     # Only the owner can change prices (resending the current price is fine)
     if current_user.role != Role.OWNER:
@@ -189,10 +193,19 @@ def update_product_partial(
             )
 
     if "supplier_id" in product_data:
-        if db.get(models.Supplier, product_data["supplier_id"]) is None:
+        supplier = db.get(models.Supplier, product_data["supplier_id"])
+        if supplier is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Supplier with id: {product_data['supplier_id']} not found",
+            )
+        if (
+            product_data["supplier_id"] != existing_product.supplier_id
+            and not supplier.status
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Cannot assign product to an inactive supplier",
             )
 
     for key, value in product_data.items():
@@ -214,7 +227,7 @@ def update_product_partial(
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def deactivate_product(id: int, db: Session = Depends(get_db)):
-    existing_product = db.scalar(select(models.Product).where(models.Product.id == id))
+    existing_product = db.get(models.Product, id)
 
     if not existing_product:
         raise HTTPException(

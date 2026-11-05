@@ -159,8 +159,12 @@ class ProductBase(BaseModel):
     description: str = Field(max_length=150)
     category_id: int
     supplier_id: int
-    cost_price: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
-    selling_price: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    cost_price: Decimal = Field(
+        ge=0, lt=Decimal("10000000000"), max_digits=12, decimal_places=2
+    )
+    selling_price: Decimal = Field(
+        gt=0, lt=Decimal("10000000000"), max_digits=12, decimal_places=2
+    )
     minimum_stock_lvl: int = Field(ge=0)
     status: bool = True
 
@@ -178,6 +182,8 @@ class ProductResponse(ProductBase):
 
 
 class ProductUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, min_length=1, max_length=50)
     description: str | None = Field(default=None, max_length=150)
     category_id: int | None = None
@@ -185,17 +191,26 @@ class ProductUpdate(BaseModel):
     cost_price: Decimal | None = Field(
         default=None,
         ge=0,
+        lt=Decimal("10000000000"),
         max_digits=12,
         decimal_places=2,
     )
     selling_price: Decimal | None = Field(
         default=None,
         gt=0,
+        lt=Decimal("10000000000"),
         max_digits=12,
         decimal_places=2,
     )
     minimum_stock_lvl: int | None = Field(default=None, ge=0)
     status: bool | None = None
+
+    @model_validator(mode="after")
+    def reject_null_non_nullable_fields(self):
+        for field_name in self.model_fields_set:
+            if getattr(self, field_name) is None:
+                raise ValueError(f"{field_name} cannot be null")
+        return self
 
 
 class InventoryResponse(BaseModel):
@@ -205,6 +220,14 @@ class InventoryResponse(BaseModel):
     product: ProductResponse
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaginatedInventoryResponse(BaseModel):
+    products: list[InventoryResponse]
+    total: int
+    skip: int
+    limit: int
+    has_more: bool
 
 
 class CustomerBase(BaseModel):
@@ -261,7 +284,9 @@ class CustomerUpdate(BaseModel):
 class PurchaseDetailBase(BaseModel):
     product_id: int
     quantity: int = Field(gt=0)
-    unit_price: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    unit_price: Decimal = Field(
+        gt=0, lt=Decimal("10000000000"), max_digits=12, decimal_places=2
+    )
 
 
 class PurchaseDetailCreate(PurchaseDetailBase):
@@ -276,30 +301,39 @@ class PurchaseDetailResponse(PurchaseDetailBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PurchaseDetailUpdate(BaseModel):
-    product_id: int | None = None
-    quantity: int | None = Field(default=None, gt=0)
-    unit_price: Decimal | None = Field(
-        default=None,
-        gt=0,
-        max_digits=12,
-        decimal_places=2,
-    )
-
-
 class PurchaseBase(BaseModel):
     reference_number: str = Field(min_length=1, max_length=50)
     purchase_date: date
     supplier_id: int
     discount: Decimal = Field(
-        default=Decimal("0.00"), ge=0, decimal_places=2, max_digits=12
+        default=Decimal("0.00"),
+        ge=0,
+        lt=Decimal("10000000000"),
+        decimal_places=2,
+        max_digits=12,
     )
-    amount_paid: Decimal = Field(ge=0, decimal_places=2)
+    amount_paid: Decimal = Field(
+        ge=0, lt=Decimal("10000000000"), max_digits=12, decimal_places=2
+    )
     notes: str | None = None
 
 
 class PurchaseCreate(PurchaseBase):
     purchase_details: list[PurchaseDetailCreate] = Field(min_length=1)
+
+    @field_validator("purchase_details")
+    @classmethod
+    def reject_duplicate_products(
+        cls, details: list[PurchaseDetailCreate]
+    ) -> list[PurchaseDetailCreate]:
+        seen: set[int] = set()
+        for item in details:
+            if item.product_id in seen:
+                raise ValueError(
+                    f"Duplicate product_id {item.product_id} in purchase_details"
+                )
+            seen.add(item.product_id)
+        return details
 
 
 class PurchaseResponse(PurchaseBase):
@@ -338,6 +372,7 @@ class PurchaseUpdate(BaseModel):
     amount_paid: Decimal | None = Field(
         default=None,
         ge=0,
+        lt=Decimal("10000000000"),
         max_digits=12,
         decimal_places=2,
     )

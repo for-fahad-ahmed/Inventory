@@ -1,30 +1,81 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from typing import Optional, Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session, contains_eager, joinedload
 
 from backend import models
 from backend.database import get_db
 from backend.dependencies import get_current_user
-from backend.schemas import InventoryResponse
+from backend.schemas import InventoryResponse, PaginatedInventoryResponse
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 
-@router.get("/", response_model=list[InventoryResponse], status_code=status.HTTP_200_OK)
+@router.get(
+    "/", response_model=PaginatedInventoryResponse, status_code=status.HTTP_200_OK
+)
 def get_inventory(
-    low_stock: bool = False,
+    low_stock: Optional[bool] = False,
+    category: Optional[str] = None,
+    supplier: Optional[str] = None,
+    search: Optional[str] = None,
+    active_only: bool = True,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
 ):
-    statement = select(models.Inventory).join(models.Product)
+    statement = select(models.Inventory)
+    product_joined = False
+    if low_stock or category or supplier or search or active_only:
+        statement = statement.join(models.Inventory.product)
+        product_joined = True
+    if active_only:
+        statement = statement.where(models.Product.status.is_(True))
     if low_stock:
         statement = statement.where(
             models.Inventory.quantity_on_hand <= models.Product.minimum_stock_lvl
         )
-    statement = statement.options(selectinload(models.Inventory.product)).order_by(
-        models.Inventory.product_id
+    if search:
+        pattern = f"%{search}%"
+        statement = statement.where(
+            or_(
+                models.Product.name.ilike(pattern),
+                models.Product.product_code.ilike(pattern),
+            )
+        )
+    if category:
+        statement = statement.join(models.Product.category).where(
+            models.Category.name == category
+        )
+    if supplier:
+        statement = statement.join(models.Product.supplier).where(
+            models.Supplier.name == supplier
+        )
+
+    count_statement = statement.with_only_columns(
+        func.count(models.Inventory.product_id)
+    ).order_by(None)
+    total = db.scalar(count_statement) or 0
+
+    if not product_joined:
+        statement = statement.join(models.Inventory.product)
+
+    statement = (
+        statement.options(contains_eager(models.Inventory.product))
+        .order_by(models.Inventory.product_id)
+        .offset(skip)
+        .limit(limit)
     )
-    return db.scalars(statement).all()
+
+    inventory = db.scalars(statement).all()
+
+    has_more = (len(inventory) + skip) < total
+
+    return PaginatedInventoryResponse(
+        products=inventory, total=total, skip=skip, limit=limit, has_more=has_more
+    )
 
 
 @router.get(
@@ -38,7 +89,7 @@ def get_product_inventory(
     inventory = db.scalar(
         select(models.Inventory)
         .where(models.Inventory.product_id == product_id)
-        .options(selectinload(models.Inventory.product))
+        .options(joinedload(models.Inventory.product))
     )
     if inventory is None:
         raise HTTPException(

@@ -1,0 +1,209 @@
+.dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+}
+
+.dialog-content {
+    width: 100%;
+    max-width: 800px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background: #18181B;
+    border: 1px solid #3F3F46;
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #27272A;
+}
+
+.dialog-header h2 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    color: #FAFAFA;
+}
+
+.dialog-header p {
+    margin: 0;
+    color: #A1A1AA;
+    font-size: 14px;
+}
+
+.close-dialog {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #27272A;
+    color: #A1A1AA;
+    border: 1px solid #3F3F46;
+    border-radius: 7px;
+    font-size: 22px;
+    cursor: pointer;
+    transition: 180ms ease;
+}
+
+.close-dialog:hover {
+    background: #3F3F46;
+    color: #FAFAFA;
+}
+
+.dialog-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    padding-top: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.dialog-form > .form-group:last-of-type,
+.dialog-actions {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #E4E4E7;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 11px 13px;
+    background: #202024;
+    border: 1px solid #3F3F46;
+    border-radius: 8px;
+    color: #FAFAFA;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    resize: vertical;
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        background-color 180ms ease;
+}
+
+.form-group select {
+    cursor: pointer;
+}
+
+.form-group select:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.field-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+    color: #F87171;
+}
+
+.retry-btn {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    background-color: #27272A;
+    color: #FAFAFA;
+    border: 1px solid #3F3F46;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.retry-btn:hover {
+    background-color: #3F3F46;
+    border-color: #FF6A00;
+}
+
+.field-helper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    font-size: 12px;
+    color: #A1A1AA;
+    line-height: 1.4;
+}
+
+.helper-action-btn {
+    padding: 4px 10px;
+    background-color: transparent;
+    color: #FF6A00;
+    border: 1px solid rgba(255, 106, 0, 0.4);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.helper-action-btn:hover {
+    background-color: rgba(255, 106, 0, 0.12);
+    border-color: #FF6A00;
+    color: #FAFAFA;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder,
+.form-group select::placeholder {
+    color: #71717A;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    border-color: #FF6A00;
+    background: #242428;
+    box-shadow: 0 0 0 3px rgba(255, 106, 0, 0.15);
+}
+
+.form-group select option {
+    background-color: #202024;
+    color: #FAFAFA;
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 18px;
+    border-top: 1px solid #27272A;
+}
+
+@media (max-width: 540px) {
+    .dialog-form {
+        grid-template-columns: 1fr;
+    }
+}

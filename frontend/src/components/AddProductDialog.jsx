@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Dialog from "./Dialog.jsx";
 import Button from "./Button.jsx";
 import { getAllSuppliers } from "../api/suppliers.js";
 import { getAllCategories } from "../api/categories.js";
+import { CreateProduct } from "../api/products.js";
 
-export default function AddProductDialog({ isOpen, onClose }) {
+export default function AddProductDialog({ isOpen, onClose, onProductCreated }) {
   const navigate = useNavigate();
 
   const [suppliers, setSuppliers] = useState([]);
@@ -15,6 +16,9 @@ export default function AddProductDialog({ isOpen, onClose }) {
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoriesError, setCategoriesError] = useState("");
+
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchSuppliers = async () => {
     try {
@@ -47,6 +51,7 @@ export default function AddProductDialog({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen) return;
 
+    setError("");
     const loadDropdownData = async () => {
       await Promise.allSettled([fetchSuppliers(), fetchCategories()]);
     };
@@ -54,35 +59,66 @@ export default function AddProductDialog({ isOpen, onClose }) {
     loadDropdownData();
   }, [isOpen]);
 
-  const handleAddProduct = (e) => {
+  const handleAddProduct = async (e) => {
     e.preventDefault();
+    setError("");
+    setSubmitting(true);
 
     const formData = new FormData(e.target);
 
+    const cost_price = Number(formData.get("cost-price"));
+    const selling_price = Number(formData.get("selling-price"));
+
+    if (selling_price < cost_price) {
+      setError("Selling price cannot be less than cost price.");
+      setSubmitting(false);
+      return;
+    }
+
     const product = {
-      name: formData.get("name"),
+      name: formData.get("name")?.trim(),
       category_id: Number(formData.get("category")),
       supplier_id: Number(formData.get("supplier")),
-      cost_price: Number(formData.get("cost-price")),
-      selling_price: Number(formData.get("selling-price")),
+      cost_price,
+      selling_price,
       minimum_stock_lvl: Number(formData.get("min-stock-lvl")),
-      description: formData.get("description"),
+      description: formData.get("description")?.trim() || "",
     };
 
-    console.log("New product:", product);
+    try {
+      const newProduct = await CreateProduct(product);
+      e.target.reset();
+      setError("");
+      if (onProductCreated) {
+        onProductCreated(newProduct);
+      }
+      onClose();
+    } catch (err) {
+      setError(err.message || "Failed to create product");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
+  const handleClose = () => {
+    setError("");
     onClose();
-    e.target.reset();
   };
 
   return (
     <Dialog
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Add Product"
       subtitle="Enter the details of your new product."
     >
       <form className="dialog-form" onSubmit={handleAddProduct}>
+        {error && (
+          <div className="form-error" role="alert">
+            {error}
+          </div>
+        )}
+
         <div className="form-group">
           <label htmlFor="product-name">Product Name</label>
           <input
@@ -90,6 +126,7 @@ export default function AddProductDialog({ isOpen, onClose }) {
             name="name"
             type="text"
             placeholder="Enter product name"
+            maxLength="50"
             required
           />
         </div>
@@ -227,7 +264,7 @@ export default function AddProductDialog({ isOpen, onClose }) {
             id="product-selling-price"
             name="selling-price"
             type="number"
-            min="0"
+            min="0.01"
             step="0.01"
             placeholder="Enter price"
             required
@@ -235,14 +272,14 @@ export default function AddProductDialog({ isOpen, onClose }) {
         </div>
 
         <div className="form-group">
-          <label htmlFor="product-min-stock-lvl">Minium Stock Level</label>
+          <label htmlFor="product-min-stock-lvl">Minimum Stock Level</label>
           <input
             id="product-min-stock-lvl"
             name="min-stock-lvl"
             type="number"
             min="0"
             step="1"
-            placeholder="Enter Minium Stock Level"
+            placeholder="Enter Minimum Stock Level"
             required
           />
         </div>
@@ -253,16 +290,19 @@ export default function AddProductDialog({ isOpen, onClose }) {
             id="product-description"
             name="description"
             placeholder="Enter product description"
+            maxLength="150"
             rows="3"
           />
         </div>
 
         <div className="dialog-actions">
-          <Button type="button" onClick={onClose}>
+          <Button type="button" onClick={handleClose}>
             Cancel
           </Button>
 
-          <Button type="submit">Add Product</Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Adding..." : "Add Product"}
+          </Button>
         </div>
       </form>
     </Dialog>

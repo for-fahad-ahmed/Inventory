@@ -1,16 +1,3 @@
-// const API_URL = "http://localhost:8000";
-//
-// export async function getLowStockProducts() {
-//   const response = await fetch(`${API_URL}/inventory?low_stock=true`, {
-//     method: "GET",
-//   });
-//
-//   if (!response.ok) {
-//     throw new Error("Failed to fetch low stock products");
-//   }
-//   return await response.json();
-// }
-
 const API_URL = "http://localhost:8000";
 
 export async function getLowStockProducts() {

@@ -26,7 +26,7 @@ def money(value: Decimal):
     return Decimal(str(value)).quantize(CENT, rounding=ROUND_HALF_UP)
 
 
-def build_purchase_details(detail_inputs: list, db: Session):
+def build_purchase_details(detail_inputs: list, supplier_id: int, db: Session):
     product_ids = {detail.product_id for detail in detail_inputs}
     products = db.scalars(
         select(models.Product).where(models.Product.id.in_(product_ids))
@@ -48,6 +48,14 @@ def build_purchase_details(detail_inputs: list, db: Session):
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Product {item.product_id} is inactive",
             )
+        if product.supplier_id != supplier_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Product {item.product_id} does not belong to "
+                    f"supplier {supplier_id}"
+                ),
+            )
         unit_price = money(item.unit_price)
         line_total = money(Decimal(item.quantity) * unit_price)
         details.append(
@@ -61,15 +69,14 @@ def build_purchase_details(detail_inputs: list, db: Session):
     return details
 
 
-def get_authorized_purchase(db: Session, purchase_id: int, current_user: models.User):
+def get_authorized_purchase(
+    db: Session, purchase_id: int, current_user: models.User
+):
     statement = select(models.Purchase).where(models.Purchase.id == purchase_id)
     if current_user.role != Role.OWNER:
         statement = statement.where(models.Purchase.user_id == current_user.id)
     purchase = db.scalar(
         statement.options(selectinload(models.Purchase.purchase_details))
-        .order_by(models.Purchase.id.desc())
-        .offset(skip)
-        .limit(limit)
     )
     if purchase is None:
         raise HTTPException(
@@ -155,7 +162,9 @@ def create_purchase(
             detail="Cannot create a purchase for an inactive supplier",
         )
 
-    details = build_purchase_details(purchase.purchase_details, db)
+    details = build_purchase_details(
+        purchase.purchase_details, purchase.supplier_id, db
+    )
 
     subtotal, total, payment_status = calculate_purchase_totals(
         details, purchase.discount, purchase.amount_paid
@@ -189,7 +198,7 @@ def create_purchase(
         )
 
         db.commit()
-        db.refresh(new_purchase)
+        db.refresh(new_purchase, attribute_names=["purchase_details"])
 
     except IntegrityError:
         db.rollback()
@@ -205,7 +214,7 @@ def create_purchase(
 
 
 @router.get(
-    "/{id}", response_model=PaginatedPurchasesResponse, status_code=status.HTTP_200_OK
+    "/{id}", response_model=PurchaseResponse, status_code=status.HTTP_200_OK
 )
 def get_purchase(
     id: int,
@@ -217,43 +226,37 @@ def get_purchase(
     return purchase
 
 
-@router.get("/", response_model=list[PurchaseResponse], status_code=status.HTTP_200_OK)
+@router.get(
+    "/", response_model=PaginatedPurchasesResponse, status_code=status.HTTP_200_OK
+)
 def get_purchases(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 10,
 ):
-    if current_user.role == Role.OWNER:
-        total_purchases = db.scalar(select(func.count()).select_from(models.Purchase))
+    statement = select(models.Purchase)
+    if current_user.role != Role.OWNER:
+        statement = statement.where(models.Purchase.user_id == current_user.id)
 
-        purchases = db.scalars(
-            select(models.Purchase).options(
-                selectinload(models.Purchase.purchase_details)
-            )
-        ).all()
-
-        has_more = skip + len(purchases) < total_purchases
-
-    else:
-        total_purchases = db.scalar(
-            select(func.count())
-            .select_from(models.Purchase)
-            .where(models.Purchase.id == current_user.id)
+    total_purchases = (
+        db.scalar(
+            statement.with_only_columns(func.count(models.Purchase.id)).order_by(None)
         )
-        purchases = db.scalars(
-            select(models.Purchase)
-            .where(models.Purchase.user_id == current_user.id)
-            .options(selectinload(models.Purchase.purchase_details))
-            .order_by(models.Purchase.id.desc())
-            .offset(skip)
-            .limit(limit)
-        ).all()
+        or 0
+    )
 
-        has_more = skip + len(purchases) < total_purchases
+    purchases = db.scalars(
+        statement.options(selectinload(models.Purchase.purchase_details))
+        .order_by(models.Purchase.id.desc())
+        .offset(skip)
+        .limit(limit)
+    ).all()
+
+    has_more = skip + len(purchases) < total_purchases
 
     return PaginatedPurchasesResponse(
-        purchases=[PurchaseResponse.model_validate(purchase) for purchase in purchases],
+        purchases=purchases,
         total=total_purchases,
         skip=skip,
         limit=limit,
@@ -308,7 +311,7 @@ def update_purchase_partial(
         existing_purchase.payment_status = payment_status
 
         db.commit()
-        db.refresh(existing_purchase)
+        db.refresh(existing_purchase, attribute_names=["purchase_details"])
     except IntegrityError:
         db.rollback()
         raise HTTPException(
@@ -348,7 +351,7 @@ def cancel_purchase(
 
         existing_purchase.purchase_status = PurchaseStatus.CANCELLED
         db.commit()
-        db.refresh(existing_purchase)
+        db.refresh(existing_purchase, attribute_names=["purchase_details"])
     except IntegrityError:
         db.rollback()
         raise HTTPException(
@@ -360,17 +363,3 @@ def cancel_purchase(
         raise
 
     return existing_purchase
-
-
-# @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-# def delete_purchase(id: int, db: Session = Depends(get_db)):
-#     purchase = db.scalar(select(models.Purchase).where(models.Purchase.id == id))
-
-#     if not purchase:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND,
-#             detail=f"Purchase with id: {id} not found",
-#         )
-
-#     db.delete(purchase)
-#     db.commit()

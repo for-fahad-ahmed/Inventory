@@ -1,0 +1,111 @@
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--bg-main);
+    gap: 20px;
+    padding: clamp(16px, 3vw, 24px);
+}
+
+.dashboard h1 {
+    font-size: clamp(22px, 4vw, 32px);
+    color: var(--text-primary);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+}
+
+.dashboard h2 {
+    font-size: clamp(18px, 2.5vw, 22px);
+    color: var(--text-heading);
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.dashboard h3 {
+    font-size: 18px;
+    color: var(--text-secondary);
+}
+
+.dashboard .card-link {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    width: fit-content;
+    margin-top: auto;
+    transition: color 180ms ease;
+}
+
+.dashboard .card-link:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
+.dashboard > .main-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.dashboard .card {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+}
+
+.dashboard .card p {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+}
+
+.dashboard .quick-actions {
+    background-color: var(--bg-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+}
+
+.quick-actions .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.dashboard .low-stock-items {
+    gap: 15px;
+    overflow-x: auto;
+}
+
+.dashboard .low-stock-items h2 {
+    margin: 0 0 10px 0;
+}
+
+.dashboard .low-stock-items p {
+    font-size: 14px;
+    color: var(--text-muted);
+    padding: 10px 0;
+    margin-bottom: 0;
+}
+
+.dashboard .low-stock-items p.error {
+    color: var(--danger);
+}
+
+@media (max-width: 768px) {
+    .dashboard .low-stock-items {
+        padding: 15px;
+    }
+
+    .dashboard .low-stock-items h2 {
+        font-size: 20px;
+    }
+}

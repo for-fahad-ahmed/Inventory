@@ -1,0 +1,50 @@
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    min-width: 650px;
+}
+
+.data-table thead {
+    background-color: var(--bg-hover);
+}
+
+.data-table th {
+    padding: 14px 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.data-table td {
+    padding: 14px 16px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.data-table tbody tr:nth-child(even) {
+    background-color: var(--bg-row-even);
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table .text-right {
+    text-align: right;
+}
+
+.data-table .mono-text {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 768px) {
+    .data-table {
+        min-width: 600px;
+    }
+}

@@ -132,6 +132,19 @@ export default function AddProductDialog({ isOpen, onClose, onProductCreated }) 
         </div>
 
         <div className="form-group">
+          <label htmlFor="product-min-stock-lvl">Minimum Stock Level</label>
+          <input
+            id="product-min-stock-lvl"
+            name="min-stock-lvl"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Enter Minimum Stock Level"
+            required
+          />
+        </div>
+
+        <div className="form-group">
           <label htmlFor="product-category">Category</label>
           <select
             id="product-category"
@@ -271,20 +284,7 @@ export default function AddProductDialog({ isOpen, onClose, onProductCreated }) 
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="product-min-stock-lvl">Minimum Stock Level</label>
-          <input
-            id="product-min-stock-lvl"
-            name="min-stock-lvl"
-            type="number"
-            min="0"
-            step="1"
-            placeholder="Enter Minimum Stock Level"
-            required
-          />
-        </div>
-
-        <div className="form-group">
+        <div className="form-group full-width">
           <label htmlFor="product-description">Description</label>
           <textarea
             id="product-description"
@@ -296,7 +296,7 @@ export default function AddProductDialog({ isOpen, onClose, onProductCreated }) 
         </div>
 
         <div className="dialog-actions">
-          <Button type="button" onClick={handleClose}>
+          <Button type="button" variant="secondary" onClick={handleClose}>
             Cancel
           </Button>
 

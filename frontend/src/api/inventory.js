@@ -7,7 +7,7 @@ export async function getLowStockProducts() {
     throw new Error("Authentication token not found. Please log in");
   }
   try {
-    const response = await fetch(`${API_URL}/inventory?low_stock=true`, {
+    const response = await fetch(`${API_URL}/inventory/?low_stock=true`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -24,7 +24,8 @@ export async function getLowStockProducts() {
       throw new Error(`HTTP ${response.status}: ${error}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    return Array.isArray(data?.products) ? data.products : [];
   } catch (error) {
     console.error("Low stock API error:", error);
     throw error;

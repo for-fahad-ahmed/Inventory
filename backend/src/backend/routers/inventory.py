@@ -1,6 +1,6 @@
-from typing import Optional, Annotated
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, contains_eager, joinedload
 
@@ -17,8 +17,8 @@ router = APIRouter(prefix="/inventory", tags=["inventory"])
 )
 def get_inventory(
     low_stock: Optional[bool] = False,
-    category: Optional[str] = None,
-    supplier: Optional[str] = None,
+    category_id: Optional[int] = None,
+    supplier_id: Optional[int] = None,
     search: Optional[str] = None,
     active_only: bool = True,
     db: Session = Depends(get_db),
@@ -28,7 +28,13 @@ def get_inventory(
 ):
     statement = select(models.Inventory)
     product_joined = False
-    if low_stock or category or supplier or search or active_only:
+    if (
+        low_stock
+        or category_id is not None
+        or supplier_id is not None
+        or search
+        or active_only
+    ):
         statement = statement.join(models.Inventory.product)
         product_joined = True
     if active_only:
@@ -45,14 +51,10 @@ def get_inventory(
                 models.Product.product_code.ilike(pattern),
             )
         )
-    if category:
-        statement = statement.join(models.Product.category).where(
-            models.Category.name == category
-        )
-    if supplier:
-        statement = statement.join(models.Product.supplier).where(
-            models.Supplier.name == supplier
-        )
+    if category_id is not None:
+        statement = statement.where(models.Product.category_id == category_id)
+    if supplier_id is not None:
+        statement = statement.where(models.Product.supplier_id == supplier_id)
 
     count_statement = statement.with_only_columns(
         func.count(models.Inventory.product_id)

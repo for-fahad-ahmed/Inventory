@@ -26,12 +26,7 @@ export default function Dashboard() {
         setLoading(true);
         setError("");
 
-        const data = await getLowStockProducts();
-        const products = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.products)
-            ? data.products
-            : [];
+        const products = await getLowStockProducts();
         setLowStockProducts(products);
       } catch (err) {
         setError(err.message || "Something went wrong");

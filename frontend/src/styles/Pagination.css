@@ -1,0 +1,113 @@
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px 24px;
+    padding-top: 16px;
+    margin-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+    width: 100%;
+}
+
+.pagination-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+}
+
+.pagination-info {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.pagination-info strong {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.pagination-limit {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-limit label {
+    font-size: 13px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.pagination-limit select {
+    height: 36px;
+    padding: 0 10px;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease;
+}
+
+.pagination-limit select:hover:not(:disabled) {
+    border-color: var(--text-placeholder);
+}
+
+.pagination-limit select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255, 106, 0, 0.15);
+}
+
+.pagination-limit select:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pagination-page {
+    font-size: 14px;
+    color: var(--text-muted);
+    padding: 0 6px;
+    white-space: nowrap;
+}
+
+.pagination-page strong {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.pagination-controls .pagination-btn {
+    min-height: 38px;
+    padding: 8px 14px;
+    font-size: 14px;
+}
+
+@media (max-width: 640px) {
+    .pagination {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .pagination-meta {
+        justify-content: space-between;
+    }
+
+    .pagination-controls {
+        justify-content: space-between;
+    }
+}

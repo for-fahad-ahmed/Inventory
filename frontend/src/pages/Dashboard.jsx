@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "../styles/Dashboard.css";
 import Button from "../components/Button.jsx";
-import AddProductDialog from "../components/AddProductDialog.jsx";
+import ProductDialog from "../components/ProductDialog.jsx";
 import Toast from "../components/Toast.jsx";
 import DataTable from "../components/DataTable.jsx";
 import { getLowStockProducts } from "../api/inventory.js";
@@ -144,7 +144,7 @@ export default function Dashboard() {
         {lowStockContent}
       </div>
 
-      <AddProductDialog
+      <ProductDialog
         isOpen={isAddProductOpen}
         onClose={() => setIsAddProductOpen(false)}
         onProductCreated={handleProductCreated}

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Eye, PackagePlus, Pencil, Trash2 } from "lucide-react";
 import "../styles/Product.css";
 import Button from "../components/Button.jsx";
-import AddProductDialog from "../components/AddProductDialog.jsx";
+import ProductDialog from "../components/ProductDialog.jsx";
 import ActionDropdown from "../components/ActionDropdown.jsx";
 import ConfirmationDialog from "../components/ConfirmationDialog.jsx";
 import Toast from "../components/Toast.jsx";
@@ -16,6 +16,7 @@ import { getAllSuppliers } from "../api/suppliers.js";
 
 export default function Products() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [productToDeactivate, setProductToDeactivate] = useState(null);
   const [deactivating, setDeactivating] = useState(false);
   const [toast, setToast] = useState(null);
@@ -143,7 +144,7 @@ export default function Products() {
     {
       label: "Edit Product",
       icon: <Pencil size={16} />,
-      onClick: () => {},
+      onClick: () => setEditingProduct(row),
     },
     {
       label: "Adjust Stock",
@@ -210,6 +211,9 @@ export default function Products() {
     product_code: item.product?.product_code,
     name: item.product?.name,
     description: item.product?.description || "—",
+    raw_description: item.product?.description ?? "",
+    category_id: item.product?.category_id,
+    supplier_id: item.product?.supplier_id,
     quantity_on_hand: item.quantity_on_hand,
     minimum_stock_lvl: item.product?.minimum_stock_lvl,
     cost_price: Number(item.product?.cost_price ?? 0).toFixed(2),
@@ -234,6 +238,19 @@ export default function Products() {
       type: "success",
     });
     fetchData();
+  };
+
+  const handleProductUpdated = (updatedProduct) => {
+    setToast({
+      message: `Product "${updatedProduct?.name || "Item"}" updated successfully!`,
+      type: "success",
+    });
+    fetchData();
+  };
+
+  const handleCloseProductDialog = () => {
+    setIsDialogOpen(false);
+    setEditingProduct(null);
   };
 
   let categoryOptions;
@@ -361,10 +378,12 @@ export default function Products() {
         </form>
       </PageHeader>
 
-      <AddProductDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+      <ProductDialog
+        isOpen={isDialogOpen || Boolean(editingProduct)}
+        product={editingProduct}
+        onClose={handleCloseProductDialog}
         onProductCreated={handleProductCreated}
+        onProductUpdated={handleProductUpdated}
       />
 
       <ConfirmationDialog

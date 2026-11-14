@@ -36,6 +36,45 @@ export async function CreateProduct(product) {
   return response.json();
 }
 
+export async function UpdateProduct(productId, product) {
+  const token = sessionStorage.getItem("access_token");
+
+  if (!token) {
+    throw new Error("Authentication token not found. Please log in.");
+  }
+
+  const response = await fetch(`${API_URL}/products/${productId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(product),
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      sessionStorage.clear();
+      window.location.replace("/login");
+      throw new Error("Session expired. Please log in again.");
+    }
+
+    const errorData = await response.json().catch(() => ({}));
+
+    if (response.status === 403) {
+      throw new Error(
+        errorData.detail || "You don't have permission to update this product.",
+      );
+    }
+
+    throw new Error(
+      errorData.detail || `Failed to update product (${response.status})`,
+    );
+  }
+
+  return response.json();
+}
+
 export async function DeactivateProduct(productId) {
   const token = sessionStorage.getItem("access_token");
 

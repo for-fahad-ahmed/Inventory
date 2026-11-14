@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import "../styles/Dashboard.css";
 import Button from "../components/Button.jsx";
 import AddProductDialog from "../components/AddProductDialog.jsx";
+import Toast from "../components/Toast.jsx";
 import DataTable from "../components/DataTable.jsx";
 import { getLowStockProducts } from "../api/inventory.js";
 
@@ -19,24 +20,33 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [lowStockProducts, setLowStockProducts] = useState([]);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const products = await getLowStockProducts();
+      setLowStockProducts(products);
+    } catch (err) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const products = await getLowStockProducts();
-        setLowStockProducts(products);
-      } catch (err) {
-        setError(err.message || "Something went wrong");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
+
+  const handleProductCreated = (newProduct) => {
+    setToast({
+      message: `Product "${newProduct?.name || "Item"}" created successfully!`,
+      type: "success",
+    });
+    fetchData();
+  };
 
   const formattedLowStockData = lowStockProducts.map((item, index) => ({
     id: item.product_id ?? item.id ?? item.product?.id ?? index,
@@ -63,6 +73,14 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <h1>Dashboard</h1>
 
       <div className="main-cards">
@@ -129,6 +147,7 @@ export default function Dashboard() {
       <AddProductDialog
         isOpen={isAddProductOpen}
         onClose={() => setIsAddProductOpen(false)}
+        onProductCreated={handleProductCreated}
       />
     </div>
   );

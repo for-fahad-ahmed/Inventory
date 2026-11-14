@@ -34,8 +34,14 @@ export default function Toast({
   if (!message) return null;
 
   return (
-    <div className={`toast-container toast-${type}`}>
-      <span>{icon}</span>
+    <div
+      className={`toast-container toast-${type}`}
+      role={type === "error" ? "alert" : "status"}
+      aria-live="polite"
+    >
+      <span className="toast-icon" aria-hidden="true">
+        {icon}
+      </span>
       <span className="toast-message">{message}</span>
 
       {onClose && (

@@ -1,26 +1,23 @@
 import { useEffect, useState } from "react";
+import { Eye, PackagePlus, Pencil, Trash2 } from "lucide-react";
 import "../styles/Product.css";
 import Button from "../components/Button.jsx";
 import AddProductDialog from "../components/AddProductDialog.jsx";
+import ActionDropdown from "../components/ActionDropdown.jsx";
+import ConfirmationDialog from "../components/ConfirmationDialog.jsx";
 import Toast from "../components/Toast.jsx";
 import { getInventory } from "../api/inventory.js";
+import { DeactivateProduct } from "../api/products.js";
 import DataTable from "../components/DataTable.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { getAllCategories } from "../api/categories.js";
 import { getAllSuppliers } from "../api/suppliers.js";
 
-const productColumns = [
-  { key: "product_code", label: "Product Code", mono: true },
-  { key: "name", label: "Product Name" },
-  { key: "description", label: "Description" },
-  { key: "quantity_on_hand", label: "Available Stock", align: "right" },
-  { key: "minimum_stock_lvl", label: "Minimum Stock", align: "right" },
-  { key: "cost_price", label: "Cost Price", align: "right" },
-  { key: "selling_price", label: "Selling Price", align: "right" },
-];
 export default function Products() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [productToDeactivate, setProductToDeactivate] = useState(null);
+  const [deactivating, setDeactivating] = useState(false);
   const [toast, setToast] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -136,6 +133,77 @@ export default function Products() {
   useEffect(() => {
     fetchData();
   }, [page, limit, filters]);
+
+  const getProductActions = (row) => [
+    {
+      label: "View Details",
+      icon: <Eye size={16} />,
+      onClick: () => {},
+    },
+    {
+      label: "Edit Product",
+      icon: <Pencil size={16} />,
+      onClick: () => {},
+    },
+    {
+      label: "Adjust Stock",
+      icon: <PackagePlus size={16} />,
+      onClick: () => {},
+    },
+    {
+      label: "Deactivate Product",
+      icon: <Trash2 size={16} />,
+      divider: true,
+      danger: true,
+      onClick: () => setProductToDeactivate(row),
+    },
+  ];
+
+  const productColumns = [
+    { key: "product_code", label: "Product Code", mono: true },
+    { key: "name", label: "Product Name" },
+    { key: "description", label: "Description" },
+    { key: "quantity_on_hand", label: "Available Stock", align: "right" },
+    { key: "minimum_stock_lvl", label: "Minimum Stock", align: "right" },
+    { key: "cost_price", label: "Cost Price", align: "right" },
+    { key: "selling_price", label: "Selling Price", align: "right" },
+    {
+      key: "actions",
+      label: "Actions",
+      align: "center",
+      render: (_, row) => <ActionDropdown actions={getProductActions(row)} />,
+    },
+  ];
+
+  const handleConfirmDeactivate = async () => {
+    if (!productToDeactivate) return;
+
+    try {
+      setDeactivating(true);
+      await DeactivateProduct(productToDeactivate.id);
+
+      const deactivatedName = productToDeactivate.name || "Product";
+      setProductToDeactivate(null);
+      setToast({
+        message: `Product "${deactivatedName}" deactivated successfully!`,
+        type: "success",
+      });
+
+      if (products.length === 1 && page > 1) {
+        setPage((prev) => prev - 1);
+      } else {
+        fetchData();
+      }
+    } catch (err) {
+      setProductToDeactivate(null);
+      setToast({
+        message: err.message || "Failed to deactivate product",
+        type: "error",
+      });
+    } finally {
+      setDeactivating(false);
+    }
+  };
 
   const formattedProducts = products.map((item, index) => ({
     id: item.product_id ?? item.product?.id ?? index,
@@ -297,6 +365,17 @@ export default function Products() {
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
         onProductCreated={handleProductCreated}
+      />
+
+      <ConfirmationDialog
+        isOpen={Boolean(productToDeactivate)}
+        title="Deactivate Product"
+        message={`Are you sure you want to deactivate "${productToDeactivate?.name || "this product"}"? It will be hidden from active inventory.`}
+        confirmLabel="Deactivate"
+        loadingLabel="Deactivating..."
+        isLoading={deactivating}
+        onConfirm={handleConfirmDeactivate}
+        onCancel={() => setProductToDeactivate(null)}
       />
 
       <div className="products-table-container">

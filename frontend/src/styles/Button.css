@@ -68,6 +68,22 @@
     transform: translateY(1px);
 }
 
+.btn-danger {
+    background-color: var(--danger);
+    color: #ffffff;
+    border-color: transparent;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+}
+
+.btn-danger:active {
+    background-color: #b91c1c;
+    transform: translateY(1px);
+}
+
 .btn:disabled {
     opacity: 0.65;
     cursor: not-allowed;

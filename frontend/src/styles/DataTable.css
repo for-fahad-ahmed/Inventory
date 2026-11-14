@@ -38,6 +38,15 @@
     text-align: right;
 }
 
+.data-table .text-center {
+    text-align: center;
+}
+
+.data-table tbody tr:nth-last-child(-n + 2):not(:first-child) .action-dropdown-menu {
+    top: auto;
+    bottom: calc(100% + 6px);
+}
+
 .data-table .mono-text {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;

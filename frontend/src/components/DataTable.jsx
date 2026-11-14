@@ -3,6 +3,7 @@ import "../styles/DataTable.css";
 export default function DataTable({ columns = [], data = [] }) {
   const getColumnClass = (column) => {
     if (column.align === "right") return "text-right mono-text";
+    if (column.align === "center") return "text-center";
     if (column.mono) return "mono-text";
     return "";
   };

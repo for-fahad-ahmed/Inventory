@@ -69,7 +69,7 @@ export default function Dashboard() {
         <div className="card">
           <h2>Products</h2>
           <p>Manage your inventory</p>
-          <Link to="/inventory" className="card-link">
+          <Link to="/products" className="card-link">
             View Products
           </Link>
         </div>
